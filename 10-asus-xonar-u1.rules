@@ -1,0 +1,1 @@
+ACTION=="add", SUBSYSTEM=="usb", ENV{PRODUCT}=="b05/1743/100", ENV{INTERFACE}=="3/0/0", RUN+="/home/alex/X1/xonar_u1_setup"
