@@ -74,22 +74,14 @@ int main()
 
 	int ret;
 	//First release the kernel drivers
-	bool driverWasActive[4];
-	for(int i=0;i<4;i++)
+	bool driverWasActive;
+	driverWasActive=libusb_kernel_driver_active(dev, 3);
+	if(driverWasActive)
 	{
-		driverWasActive[i]=libusb_kernel_driver_active(dev, i);
-		if(driverWasActive[i])
-		{
-			ret=libusb_detach_kernel_driver(dev, i);
-			assert(ret>=0);
-		}
+		ret=libusb_detach_kernel_driver(dev, 3);
+		assert(ret>=0);
 	}
 
-	ret=libusb_reset_device(dev);
-	assert(ret>=0);
-
-	ret=libusb_claim_interface(dev,1);
-	assert(ret>=0);
 	ret=libusb_claim_interface(dev,3);
 	assert(ret>=0);
 
@@ -100,7 +92,7 @@ int main()
 	//	-> 0x80: Enable interrupt to report the control status
 	//	-> 0x18: Enable the blinking patterns
 	//	-> TODO: investigate lower bits
-	unsigned char setupReport[] = {0x02,0x01,0x1e,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	unsigned char setupReport[] = {0x02,0x01,0x18,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 	ret=libusb_control_transfer(dev,LIBUSB_ENDPOINT_OUT|LIBUSB_REQUEST_TYPE_CLASS|LIBUSB_RECIPIENT_INTERFACE,0x9,0x200,3,
 			setupReport,16,0);
 	assert(ret==16);
@@ -110,29 +102,22 @@ int main()
 	//Byte 2 is time spent off
 	//Byte 3 is total duty cycle time (TODO: understand unit of time)
 	unsigned char reportOut5[] = {0x13,0x02,0x89,0x89,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	//unsigned char reportOut5[] = {0x13,0x02,0x45,0x89,0x12,0x00,0x45,0x89,0x13,0x00,0x45,0x00,0x0b,0x00,0x00,0xdc};
 	ret=libusb_control_transfer(dev,LIBUSB_ENDPOINT_OUT|LIBUSB_REQUEST_TYPE_CLASS|LIBUSB_RECIPIENT_INTERFACE,0x9,0x200,3,
 			reportOut5,16,0);
 	assert(ret==16);
 
 	unsigned char redOut1[] = {0x11,0x02,0x45,0x89,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	//unsigned char redOut1[] = {0x11,0x02,0x00,0x00,0x30,0x10,0x02,0x94,0x13,0x00,0x10,0x00,0x00,0x00,0x00,0x00};
 	ret=libusb_control_transfer(dev,LIBUSB_ENDPOINT_OUT|LIBUSB_REQUEST_TYPE_CLASS|LIBUSB_RECIPIENT_INTERFACE,0x9,0x200,3,
 			redOut1,16,0);
 	assert(ret==16);
 
 	ret=libusb_release_interface(dev,3);
 	assert(ret>=0);
-	ret=libusb_release_interface(dev,1);
-	assert(ret>=0);
 
 	//Then reattach the audio interfaces, if needed
-	for(int i=0;i<4;i++)
+	if(driverWasActive && !libusb_kernel_driver_active(dev, 3))
 	{
-		if(driverWasActive[i] && !libusb_kernel_driver_active(dev, i))
-		{
-			ret=libusb_attach_kernel_driver(dev,i);
-			assert(ret>=0);
-		}
+		ret=libusb_attach_kernel_driver(dev,3);
+		assert(ret>=0);
 	}
 }
