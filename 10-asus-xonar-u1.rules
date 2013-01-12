@@ -1,1 +1,1 @@
-ACTION=="add", SUBSYSTEM=="usb", ENV{PRODUCT}=="b05/1743/100", ENV{INTERFACE}=="3/0/0", RUN+="/home/alex/X1/xonar_u1_setup"
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1743", RUN+="/home/alex/X1/xonard $root/$name"
