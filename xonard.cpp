@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
 {
 	if(argc!=2)
 	{
-		fprintf(stderr,"Usage: %s /dev/hidrawN", argv[0]);
+		fprintf(stderr,"Usage: %s /dev/hidrawN\n", argv[0]);
 		return 1;
 	}
 
@@ -84,24 +84,27 @@ int main(int argc, char* argv[])
 
 	// Initialize to -1, we need to set it to a sane value when the first event is received
 	int wheelPos = -1;
-	int buttonPressed = 0;
+	bool buttonPressed = false;
 	while(1)
 	{
 		char buf[16];
 		int ret=read(hidfd, buf, 16);
 		//Handle wheel control
 		int newWheelPos = wheelPosMap[buf[6]&3];
-		if(wheelPos != -1)
+		if(wheelPos != -1 && wheelPos!=newWheelPos)
 		{
-			if(newWheelPos < wheelPos)
-				printf("Down\n");
-			else if(newWheelPos > wheelPos)
-				printf("Up\n");
+			//Measure the direction of the rotation
+			if(((wheelPos+1)%4) == newWheelPos)
+				printf("Up\n", newWheelPos);
+			else if(((wheelPos-1+4)%4) == newWheelPos)
+				printf("Down\n", newWheelPos);
+			else
+				fprintf(stderr, "Invalid position variation\n");
 		}
 		wheelPos = newWheelPos;
 		//Handle button control
-		//if(wheelPos & 3
-
-	//	printf("%u\n",keyState);
+		if((buf[6] & 4) && buttonPressed==false)
+			printf("Mute\n");
+		buttonPressed = (wheelPos >> 2);
 	}
 }
