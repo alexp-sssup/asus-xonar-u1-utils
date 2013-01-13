@@ -1,8 +1,10 @@
 #include <linux/input.h>
 #include <linux/uinput.h>
+#include <linux/hidraw.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
 #include <string.h>
@@ -57,6 +59,54 @@ int sendBlinkConfPacket(int hidfd, uint8_t ledIndex, uint8_t dutyCycleA, uint8_t
 	return 0;
 }
 
+void bailoutUinputConfig()
+{
+	perror("Error while configuring uinput device: ");
+	exit(2);
+}
+
+void sendKeyPress(int uinputfd, int keyCode)
+{
+	struct input_event ev;
+	memset(&ev, 0, sizeof(ev));
+
+	ev.type = EV_KEY;
+	ev.code = keyCode;
+	ev.value = 1;
+
+	int ret = write(uinputfd, &ev, sizeof(ev));
+	if(ret < 0)
+		fprintf(stderr, "Error while sending event");
+
+	ev.type = EV_KEY;
+	ev.code = keyCode;
+	ev.value = 0;
+
+	ret = write(uinputfd, &ev, sizeof(ev));
+	if(ret < 0)
+		fprintf(stderr, "Error while sending event");
+
+	ev.type = EV_SYN;
+	ev.code = 0;
+	ev.value = 0;
+
+	ret = write(uinputfd, &ev, sizeof(ev));
+	if(ret < 0)
+		fprintf(stderr, "Error while sending event");
+}
+
+void handleVolumeDown(int uinputfd)
+{
+	printf("Down\n");
+	sendKeyPress(uinputfd, KEY_VOLUMEDOWN);
+}
+
+void handleVolumeUp(int uinputfd)
+{
+	printf("Up\n");
+	sendKeyPress(uinputfd, KEY_VOLUMEUP);
+}
+
 int main(int argc, char* argv[])
 {
 	if(argc!=2)
@@ -65,13 +115,65 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
+	//Open the HID device
 	int hidfd = open(argv[1], O_RDWR);
 	if(hidfd < 0)
 	{
 		perror("Opening hidraw device: ");
 		return 2;
 	}
-	int ret=sendGlobalConfPacket(hidfd,
+
+	//Get HID device info
+	struct hidraw_devinfo devInfo;
+	ioctl(hidfd, HIDIOCGRAWINFO, &devInfo);
+	printf("VENDOR: %x, PRODUCT: %x\n", devInfo.vendor, devInfo.product);
+	char nameBuffer[256];
+	ioctl(hidfd, HIDIOCGRAWNAME(256), nameBuffer);
+	printf("NAME: %s\n", nameBuffer);
+
+	//Create UInput device
+	int uinputfd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+	if(uinputfd < 0)
+	{
+		perror("Opening uinput device (is kernel module loaded?): ");
+		return 2;
+	}
+
+	//Configure it
+	int ret=ioctl(uinputfd, UI_SET_EVBIT, EV_KEY);
+	if(ret < 0)
+		bailoutUinputConfig();
+	ret=ioctl(uinputfd, UI_SET_EVBIT, EV_SYN);
+	if(ret < 0)
+		bailoutUinputConfig();
+	ret=ioctl(uinputfd, UI_SET_KEYBIT, KEY_MUTE);
+	if(ret < 0)
+		bailoutUinputConfig();
+	ret=ioctl(uinputfd, UI_SET_KEYBIT, KEY_VOLUMEDOWN);
+	if(ret < 0)
+		bailoutUinputConfig();
+	ret=ioctl(uinputfd, UI_SET_KEYBIT, KEY_VOLUMEUP);
+	if(ret < 0)
+		bailoutUinputConfig();
+
+	struct uinput_user_dev uidev;
+	memset(&uidev, 0, sizeof(uidev));
+
+	strncpy(uidev.name, nameBuffer, UINPUT_MAX_NAME_SIZE);
+	uidev.id.bustype = devInfo.bustype;
+	uidev.id.vendor  = devInfo.vendor;
+	uidev.id.product = devInfo.product;
+	uidev.id.version = 1;
+
+	ret = write(uinputfd, &uidev, sizeof(uidev));
+	if(ret < 0 || ret!=sizeof(uidev))
+		bailoutUinputConfig();
+
+	ret = ioctl(uinputfd, UI_DEV_CREATE);
+	if(ret < 0)
+		bailoutUinputConfig();
+
+	ret=sendGlobalConfPacket(hidfd,
 			ASUS_XONAR_U1_ENABLE_INTERRUPT|
 			ASUS_XONAR_U1_ENABLE_BLUE_LED_BLINKING|
 			ASUS_XONAR_U1_DISABLE_RED_LED);
@@ -89,15 +191,20 @@ int main(int argc, char* argv[])
 	{
 		char buf[16];
 		int ret=read(hidfd, buf, 16);
+		if(ret<0)
+		{
+			perror("Failure: ");
+			return 2;
+		}
 		//Handle wheel control
 		int newWheelPos = wheelPosMap[buf[6]&3];
 		if(wheelPos != -1 && wheelPos!=newWheelPos)
 		{
 			//Measure the direction of the rotation
 			if(((wheelPos+1)%4) == newWheelPos)
-				printf("Up\n", newWheelPos);
+				handleVolumeUp(uinputfd);
 			else if(((wheelPos-1+4)%4) == newWheelPos)
-				printf("Down\n", newWheelPos);
+				handleVolumeDown(uinputfd);
 			else
 				fprintf(stderr, "Invalid position variation\n");
 		}
