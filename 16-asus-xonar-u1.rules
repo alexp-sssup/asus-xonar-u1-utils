@@ -1,1 +1,1 @@
-ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1743", RUN+="/home/alex/X1/xonard $root/$name"
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1743", RUN+="/usr/local/bin/xonard $root/$name"
