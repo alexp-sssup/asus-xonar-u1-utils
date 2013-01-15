@@ -98,14 +98,17 @@ void sendKeyPress(int uinputfd, int keyCode)
 
 void handleVolumeDown(int uinputfd)
 {
-	printf("Down\n");
 	sendKeyPress(uinputfd, KEY_VOLUMEDOWN);
 }
 
 void handleVolumeUp(int uinputfd)
 {
-	printf("Up\n");
 	sendKeyPress(uinputfd, KEY_VOLUMEUP);
+}
+
+void handleMute(int uinputfd)
+{
+	sendKeyPress(uinputfd, KEY_MUTE);
 }
 
 int main(int argc, char* argv[])
@@ -240,7 +243,7 @@ int main(int argc, char* argv[])
 		wheelPos = newWheelPos;
 		//Handle button control
 		if((buf[6] & 4) && buttonPressed==false)
-			printf("Mute\n");
+			handleMute(uinputfd);
 		buttonPressed = (wheelPos >> 2);
 	}
 }
