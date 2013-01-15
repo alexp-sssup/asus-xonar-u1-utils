@@ -1,0 +1,15 @@
+Xonard: a simple daemon to handle the non standard audio controls on Asus Xonar U1 devices
+Copyright 2012-2013 Alessandro Pignotti
+
+Asus Xonar U1 are pretty nice USB audio devices with a decent audio quality and a knob to
+control the volume and mute status of the device. The audio device itself is completely
+supported by linux using the snd-usb-audio kernel module. The control interface identifies
+itself as a standard HID devices, unfortunately this seems to be not actually true.
+
+Xonard will configure the device to properly deliver interrupts when the knob is used
+using the hidraw kernel interface and deliver the events to the system using the uinput
+kernel interface. As an added bonus the blue LED blinking is set to something reasonable.
+
+I've also reverse engineered how to configure the blinking of both the blue and red LEDs
+and the code should be pretty self explanatory about how to use this functionality. But
+this is not currently used beside setting a sane default
