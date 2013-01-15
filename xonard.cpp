@@ -1,6 +1,7 @@
 #include <linux/input.h>
 #include <linux/uinput.h>
 #include <linux/hidraw.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -109,10 +110,38 @@ void handleVolumeUp(int uinputfd)
 
 int main(int argc, char* argv[])
 {
+	int ret;
 	if(argc!=2)
 	{
 		fprintf(stderr,"Usage: %s /dev/hidrawN\n", argv[0]);
 		return 1;
+	}
+	//Daemonize
+	pid_t pid=fork();
+	if(pid < 0)
+	{
+		perror("Error while forking: ");
+		return 2;
+	}
+	if(pid > 0)
+	{
+		//Close the parent process
+		return 0;
+	}
+	//Child process
+	umask(0022);
+	pid_t sid=setsid();
+	if(sid < 0)
+	{
+		perror("Error while creating session: ");
+		return 2;
+	}
+	
+	ret=chdir("/tmp");
+	if(ret < 0)
+	{
+		perror("Error while changin directory: ");
+		return 2;
 	}
 
 	//Open the HID device
@@ -140,7 +169,7 @@ int main(int argc, char* argv[])
 	}
 
 	//Configure it
-	int ret=ioctl(uinputfd, UI_SET_EVBIT, EV_KEY);
+	ret=ioctl(uinputfd, UI_SET_EVBIT, EV_KEY);
 	if(ret < 0)
 		bailoutUinputConfig();
 	ret=ioctl(uinputfd, UI_SET_EVBIT, EV_SYN);
