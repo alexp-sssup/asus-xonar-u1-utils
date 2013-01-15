@@ -6,3 +6,5 @@ Asus Xonar U1 are pretty nice USB audio devices with a decent audio quality and 
 Xonard will configure the device to properly deliver interrupts when the knob is used using the hidraw kernel interface and deliver the events to the system using the uinput kernel interface. As an added bonus the blue LED blinking is set to something reasonable.
 
 I've also reverse engineered how to configure the blinking of both the blue and red LEDs and the code should be pretty self explanatory about how to use this functionality. But this is not currently used beside setting a sane default
+
+Disclaimer: The code should be pretty safe, but consider that it does not come from official documentation, since I've found none. Don't blame me if it does harm your device or your cat.
