@@ -237,7 +237,7 @@ int main(int argc, char* argv[])
 
 	// Initialize to -1, we need to set it to a sane value when the first event is received
 	int wheelPos = -1;
-	bool buttonPressed = false;
+	int buttonPressed = 0;
 	while(1)
 	{
 		char buf[16];
@@ -261,8 +261,8 @@ int main(int argc, char* argv[])
 		}
 		wheelPos = newWheelPos;
 		//Handle button control
-		if((buf[6] & 4) && buttonPressed==false)
+		if((buf[6] & 4) && buttonPressed==0)
 			handleMute(uinputfd);
-		buttonPressed = (wheelPos >> 2);
+		buttonPressed = (buf[6] & 4) >> 2;
 	}
 }

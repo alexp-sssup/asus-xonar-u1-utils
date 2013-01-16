@@ -1,7 +1,7 @@
 all: xonard
 
-xonard: xonard.cpp
-	g++ -o $@ $^
+xonard: xonard.c
+	gcc -Wall -o $@ $^
 
 install: xonard
 	cp -a 16-asus-xonar-u1.rules /etc/udev/rules.d/
