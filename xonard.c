@@ -17,19 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <linux/input.h>
-#include <linux/uinput.h>
-#include <linux/hidraw.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <assert.h>
-#include <string.h>
-
-#include "xonar.h"
+#include "xonard.h"
 
 static const char wheelPosMap[4] = { 0, 1, 3, 2 };
 
@@ -41,7 +29,7 @@ int sendGlobalConfPacket(int hidfd, uint8_t conf)
 	buf[0] = 0x00;
 	//The configuration command is 0x02
 	buf[1] = 0x02;
-	//Next byte as unkown meaning
+	//Next byte has unknown meaning
 	buf[2] = 0x01;
 	//Next byte is the requested configuration
 	buf[3] = conf;
@@ -49,15 +37,13 @@ int sendGlobalConfPacket(int hidfd, uint8_t conf)
 	if(ret<0)
 		return ret;
 	if(ret!=17)
-		fprintf(stderr, "Failure while writing global configuration packet\n");
+    {
+        fprintf(stderr, "Failure while writing global configuration packet\n");
+        return 1;
+    }
 	return 0;
 }
 
-/*
- * Both dutyCycleA and dutyCycleTotal are in 20ms units (more or less)
- * dutyCycleA is the time spent OFF for the blue led
- * 		 the time spend ON for the red led
- */
 int sendBlinkConfPacket(int hidfd, uint8_t ledIndex, uint8_t dutyCycleA, uint8_t dutyCycleTotal)
 {
 	uint8_t buf[17];
@@ -66,16 +52,19 @@ int sendBlinkConfPacket(int hidfd, uint8_t ledIndex, uint8_t dutyCycleA, uint8_t
 	buf[0] = 0x00;
 	//The command depends on the led
 	buf[1] = ledIndex;
-	//Next byte as unkown meaning
+	//Next byte has unknown meaning
 	buf[2] = 0x02;
-	//Next two bytes are configures the duty cycle
+	//Next two bytes configures the duty cycle
 	buf[3] = dutyCycleA;
 	buf[4] = dutyCycleTotal;
 	int ret=write(hidfd, buf, 17);
 	if(ret<0)
 		return ret;
 	if(ret!=17)
+    {
 		fprintf(stderr, "Failure while writing blinking configuration packet\n");
+        return 1;
+    }
 	return 0;
 }
 
@@ -158,11 +147,11 @@ int main(int argc, char* argv[])
 		perror("Error while creating session: ");
 		return 2;
 	}
-	
+
 	ret=chdir("/tmp");
 	if(ret < 0)
 	{
-		perror("Error while changin directory: ");
+		perror("Error while changing directory: ");
 		return 2;
 	}
 
@@ -170,7 +159,7 @@ int main(int argc, char* argv[])
 	int hidfd = open(argv[1], O_RDWR);
 	if(hidfd < 0)
 	{
-		perror("Opening hidraw device: ");
+		perror("Error opening hidraw device: ");
 		return 2;
 	}
 
@@ -186,7 +175,7 @@ int main(int argc, char* argv[])
 	int uinputfd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 	if(uinputfd < 0)
 	{
-		perror("Opening uinput device (is kernel module loaded?): ");
+		perror("Error opening uinput device (is kernel module loaded?): ");
 		return 2;
 	}
 
@@ -224,6 +213,7 @@ int main(int argc, char* argv[])
 	if(ret < 0)
 		bailoutUinputConfig();
 
+    //Send a sane LED configuration
 	ret=sendGlobalConfPacket(hidfd,
 			ASUS_XONAR_U1_ENABLE_INTERRUPT|
 			ASUS_XONAR_U1_ENABLE_BLUE_LED_BLINKING|
