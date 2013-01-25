@@ -21,6 +21,122 @@
 
 static const char wheelPosMap[4] = { 0, 1, 3, 2 };
 
+#if ENABLE_CTL == 1
+int initIPC()
+{
+    int sockfd;
+    struct sockaddr_un sock;
+    //TODO maybe a better and more secure check
+    //     if another instance of xonard is launched,
+    //     it'll delete its socket and start.
+    if (access(SOCK_PATH, F_OK) == 0)
+        remove(SOCK_PATH);
+    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("Unable to create socket: ");
+        exit(1);
+    }
+    memset(&sock, 0, sizeof(struct sockaddr_un));
+    sock.sun_family = AF_UNIX;
+    snprintf(sock.sun_path, sizeof(sock.sun_path), SOCK_PATH);
+    if (bind(sockfd, (struct sockaddr*)&sock, sizeof(struct sockaddr_un)) != 0) {
+        perror("Unable to bind socket: ");
+        close(sockfd);
+        exit(1);
+    }
+    chmod(SOCK_PATH, SOCK_MODE);
+    if (listen(sockfd, 1) != 0) {
+        perror("Unable to listen socket");
+        close(sockfd);
+        exit(1);
+    }
+    return sockfd;
+}
+
+void destroyIPC(int sockfd)
+{
+    if (sockfd > 0) {
+        close(sockfd);
+        if (!remove(SOCK_PATH)) {
+            perror("Unable to delete FIFO: ");
+            exit(1);
+        }
+    }
+}
+
+char *getMsg(int sockfd)
+{
+    char *buffer;
+    char frameSize;
+    read(sockfd, &frameSize, 1);
+    //Skip byte if frame too big
+    if (frameSize > MAX_FRAME_SIZE)
+        return NULL;
+    buffer = (char *)malloc(sizeof(char)*frameSize);
+    read(sockfd, buffer, frameSize);
+    return buffer;
+}
+
+int waitForEvent(int sockfd, int hidfd)
+{
+    fd_set fd_read;
+    struct timeval timeout;
+    int fdmax = (sockfd > hidfd) ? sockfd+1 : hidfd+1;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 150;
+    FD_ZERO(&fd_read);
+    FD_SET(sockfd, &fd_read);
+    FD_SET(hidfd, &fd_read);
+    if (select(fdmax, &fd_read, NULL, NULL, &timeout)) {
+        if (FD_ISSET(sockfd, &fd_read)) {
+            return sockfd;
+        }
+        else if (FD_ISSET(hidfd, &fd_read)) {
+            return hidfd;
+        }
+    }
+    return -1;
+}
+
+int dataReady(int sockfd) {
+    fd_set fd_read;
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 150;
+    FD_ZERO(&fd_read);
+    FD_SET(sockfd, &fd_read);
+    if (select(sockfd+1, &fd_read, NULL, NULL, &timeout) != -1) {
+        if (FD_ISSET(sockfd, &fd_read)) {
+            int bytes;
+            ioctl(sockfd, FIONREAD, &bytes);
+            if (bytes > 0)
+                return 1;
+            else
+                return 0;
+        }
+    }
+    return 0;
+}
+
+void processPacket(int hidfd, char *payload) {
+    if (payload == NULL)
+        return;
+    if (payload[0] == 0x01) {
+        int conf;
+        sscanf(payload+1, "%08x", &conf);
+        fprintf(stderr, "Config: %d \n", conf);
+        sendGlobalConfPacket(hidfd, conf);
+    }
+    else if (payload[0] == 0x02) {
+        int ledIndex, dutyA, dutyTotal;
+        sscanf(payload+1, "%02x%02x%02x", &ledIndex, &dutyA, &dutyTotal);
+        fprintf(stderr, "Blink: %02x %d %d \n", ledIndex, dutyA, dutyTotal);
+        sendBlinkConfPacket(hidfd, ledIndex, dutyA, dutyTotal);
+    }
+}
+
+#endif
+
 int sendGlobalConfPacket(int hidfd, uint8_t conf)
 {
 	uint8_t buf[17];
@@ -37,10 +153,7 @@ int sendGlobalConfPacket(int hidfd, uint8_t conf)
 	if(ret<0)
 		return ret;
 	if(ret!=17)
-    {
-        fprintf(stderr, "Failure while writing global configuration packet\n");
-        return 1;
-    }
+		fprintf(stderr, "Failure while writing global configuration packet\n");
 	return 0;
 }
 
@@ -61,10 +174,7 @@ int sendBlinkConfPacket(int hidfd, uint8_t ledIndex, uint8_t dutyCycleA, uint8_t
 	if(ret<0)
 		return ret;
 	if(ret!=17)
-    {
 		fprintf(stderr, "Failure while writing blinking configuration packet\n");
-        return 1;
-    }
 	return 0;
 }
 
@@ -179,6 +289,14 @@ int main(int argc, char* argv[])
 		return 2;
 	}
 
+#if ENABLE_CTL == 1
+    int sockfd = initIPC();
+    if (sockfd < 0)
+    {
+        return 3;
+    }
+#endif
+
 	//Configure it
 	ret=ioctl(uinputfd, UI_SET_EVBIT, EV_KEY);
 	if(ret < 0)
@@ -231,6 +349,23 @@ int main(int argc, char* argv[])
 	while(1)
 	{
 		char buf[16];
+#if ENABLE_CTL == 1
+        int retfd = waitForEvent(sockfd, hidfd);
+        if (retfd == sockfd) {
+            int connfd = accept(sockfd, NULL, NULL);
+            if (connfd > -1) {
+                while (dataReady(connfd)) {
+                    char *sockbuf = getMsg(connfd);
+                    if (sockbuf) {
+                        processPacket(hidfd, sockbuf);
+                        free(sockbuf);
+                    }
+                }
+                close(connfd);
+            }
+        }
+        else if (retfd == hidfd) {
+#endif
 		int ret=read(hidfd, buf, 16);
 		if(ret<0)
 		{
@@ -255,4 +390,7 @@ int main(int argc, char* argv[])
 			handleMute(uinputfd);
 		buttonPressed = (buf[6] & 4) >> 2;
 	}
+#if ENABLE_CTL == 1
+    }
+#endif
 }
