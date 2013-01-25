@@ -124,13 +124,11 @@ void processPacket(int hidfd, char *payload) {
     if (payload[0] == 0x01) {
         int conf;
         sscanf(payload+1, "%08x", &conf);
-        fprintf(stderr, "Config: %d \n", conf);
         sendGlobalConfPacket(hidfd, conf);
     }
     else if (payload[0] == 0x02) {
         int ledIndex, dutyA, dutyTotal;
         sscanf(payload+1, "%02x%02x%02x", &ledIndex, &dutyA, &dutyTotal);
-        fprintf(stderr, "Blink: %02x %d %d \n", ledIndex, dutyA, dutyTotal);
         sendBlinkConfPacket(hidfd, ledIndex, dutyA, dutyTotal);
     }
 }
@@ -153,7 +151,10 @@ int sendGlobalConfPacket(int hidfd, uint8_t conf)
 	if(ret<0)
 		return ret;
 	if(ret!=17)
+    {
 		fprintf(stderr, "Failure while writing global configuration packet\n");
+        return 1;
+    }
 	return 0;
 }
 
@@ -174,7 +175,10 @@ int sendBlinkConfPacket(int hidfd, uint8_t ledIndex, uint8_t dutyCycleA, uint8_t
 	if(ret<0)
 		return ret;
 	if(ret!=17)
-		fprintf(stderr, "Failure while writing blinking configuration packet\n");
+    {
+        fprintf(stderr, "Failure while writing blinking configuration packet\n");
+        return 1;
+    }
 	return 0;
 }
 
