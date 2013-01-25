@@ -25,6 +25,33 @@
 #ifndef XONAR_H
 #define XONAR_H
 
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <string.h>
+
+//Change it to 0 to disable xonarctl and all user-level control.
+#define ENABLE_CTL 1
+
+#if ENABLE_CTL == 1
+
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
+#define SOCK_PATH "/var/run/xonard.sock"
+//Change the mask if you want to allow root only
+#define SOCK_MODE 0666
+#define MAX_FRAME_SIZE 9
+
+//Message type
+#define CONFIG_FRAME 0x01
+#define BLINK_FRAME 0x02
+
+#endif
+
+
 //Setup of controls and leds
 //	bit 7 -> Enable interrupt to report the control status
 //	bit 6-5 -> Unknown/nothing

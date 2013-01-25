@@ -22,19 +22,67 @@
  * \brief Xonard daemon
  */
 
+#ifndef XONARD_H
+#define XONARD_H
+
 #include <linux/input.h>
 #include <linux/uinput.h>
 #include <linux/hidraw.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <assert.h>
-#include <string.h>
 
 #include "xonar.h"
+
+#if ENABLE_CTL == 1
+/**
+ * \brief Initialize Inter-Process communication, create a unix socket.
+ * \return A file descriptor to a socket on success or a negative number on
+ * error.
+ */
+int initIPC();
+
+/**
+ * \brief Stop Inter-Process communication.
+ * \param[in] sockfd A file descriptor to the unix socket.
+ */
+void destroyIPC(int sockfd);
+
+/**
+ * \brief Get message from the socket.
+ * \param[in] sockfd A file descriptor to the unix socket.
+ * \return The bytes received from the unix socket.
+ */
+char *getMsg(int sockfd);
+
+/**
+ * \brief Wait for an incoming message.
+ * \param[in] sockfd A file descriptor to the unix socket.
+ */
+void waitMsg(int sockfd);
+
+/**
+ * \brief Wait for an event from both file descriptor.
+ * \param[in] sockfd A file descriptor to the socket.
+ * \param[in] hidfd A file descriptor to the hidraw interface.
+ * \return The file descriptor referring to the event.
+ */
+int waitForEvent(int sockfd, int hidfd);
+
+/**
+ * \brief Check if data is available on the socket.
+ * \param[in] sockfd A file descriptor to the socket.
+ */
+int dataReady(int sockfd);
+
+/**
+ * \brief Process data packet received from the socket.
+ * \param[in] hidfd A file descriptor to the hidraw interface.
+ * \param[in] payload The bytes received from the socket.
+ */
+void processPacket(int hidfd, char *payload);
+
+#endif
 
 /**
  * \brief Change global configuration.
@@ -81,4 +129,6 @@ void handleVolumeUp(int uinputfd);
  * \param[in] uinputfd File descriptor to uinput.
  */
 void handleMute(int uinputfd);
+
+#endif
 
