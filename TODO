@@ -1,1 +1,2 @@
-Should log to syslog
+Create some cleaning function (exit)
+Make it compliant with udev-systemd.

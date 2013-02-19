@@ -40,7 +40,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define SOCK_PATH "/var/run/xonard.sock"
+#define SOCK_PATH "/run/xonard.sock"
 //Change the mask if you want to allow root only
 #define SOCK_MODE 0666
 #define MAX_FRAME_SIZE 9
@@ -51,6 +51,8 @@
 
 #endif
 
+#define ASUS_XONAR_VENDOR_ID 0x0b05
+#define ASUS_XONAR_PRODUCT_ID 0x1743
 
 //Setup of controls and leds
 //	bit 7 -> Enable interrupt to report the control status
