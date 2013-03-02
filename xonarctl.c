@@ -143,6 +143,31 @@ void setPurpleAudio(int sockfd) {
             ASUS_XONAR_U1_ENABLE_RED_LED_AUDIO);
 }
 
+void setDisabled(int sockfd) {
+    sendConf(sockfd,
+            ASUS_XONAR_U1_ENABLE_INTERRUPT |
+            ASUS_XONAR_U1_ENABLE_BLUE_LED_BLINKING |
+            ASUS_XONAR_U1_DISABLE_RED_LED);
+    sendBlink(sockfd, ASUS_XONAR_U1_BLUE_LED, 0, 0);
+}
+
+void setVolumeDependent(int sockfd, short volume) {
+    if (volume < 0)
+        volume = 0;
+    else if (volume > 100)
+        volume = 100;
+    int dutyCycle;
+    if (volume < 51) {
+        dutyCycle = volume*2;
+        setPurpleBlueBlink(sockfd, dutyCycle, 100);
+    }
+    else {
+        volume -= 50;
+        dutyCycle = volume*1.8;
+        setPurpleRedBlink(sockfd, dutyCycle, 100);
+    }
+}
+
 int initIPC()
 {
     int sockfd;
@@ -185,13 +210,16 @@ void printUsage(char *appName) {
     printf("  -b, --blue\t\t\tSet color to blue.\n");
     printf("  -r, --red\t\t\tSet color to red.\n");
     printf("  -p, --purple\t\t\tSet color to purple.\n");
-    printf("      --blue-red\t\t\tSet blinking blue to red.\n");
-    printf("      --red-blue\t\t\tSet blinking from red to blue.\n");
-    printf("      --purple-blue\t\t\tSet color from purple to blue.\n");
-    printf("      --purple-red\t\t\tSet color from purple to red.\n");
+    printf("      --blue-red\t\tSet blinking blue to red.\n");
+    printf("      --red-blue\t\tSet blinking from red to blue.\n");
+    printf("      --purple-blue\t\tSet color from purple to blue.\n");
+    printf("      --purple-red\t\tSet color from purple to red.\n");
+    printf("      --disable\t\t\tDisable the LEDs.\n");
     printf("  -s, --still\t\t\tMake the LED still.\n");
     printf("  -a, --audio\t\t\tMake the red LED react to audio.\n");
+    printf("  -v, --volume\t\t\tMake the red LED behaviour volume dependent.\n");
     printf("  -d, --duty-cycle <value>\tSpecify time spent on vs time spent off in %%.\n");
+    printf("      --period <value>\tSpecify time spent off vs time spent on in ms (max 255).\n");
 }
 
 int main(int argc, char *argv[])
@@ -199,6 +227,7 @@ int main(int argc, char *argv[])
     int ledType = 0;
     short audioBlink = 0;
     short dutyCycle = 50;
+    short volume = 0;
     //FIXME Period different than 200 produces flickering.
     short period = 200;
     if (argc < 2) {
@@ -214,14 +243,16 @@ int main(int argc, char *argv[])
         {"red-blue", no_argument, NULL, 5},
         {"purple-blue", no_argument, NULL, 6},
         {"purple-red", no_argument, NULL, 7},
-        {"still", no_argument, NULL, 8},
-        {"audio", no_argument, NULL, 9},
-        {"duty-cycle", required_argument, NULL, 10},
-        {"period", required_argument, NULL, 11},
+        {"disable", no_argument, NULL, 8},
+        {"still", no_argument, NULL, 9},
+        {"audio", no_argument, NULL, 10},
+        {"volume", required_argument, NULL, 11},
+        {"duty-cycle", required_argument, NULL, 12},
+        {"period", required_argument, NULL, 13},
         {"help", no_argument, NULL, 99}
     };
     int opt;
-    while ((opt = getopt_long(argc, argv, "brpsahd:", longOptions, &optsIndex)) != -1) {
+    while ((opt = getopt_long(argc, argv, "brpsahv:d:", longOptions, &optsIndex)) != -1) {
         if (opt > 0 && opt < 8) {
             if (ledType != 0) {
                 printf("Too much arguments!\n");
@@ -242,14 +273,21 @@ int main(int argc, char *argv[])
                     ledType = 3;
                     break;
                 case 8:
+                    ledType = 8;
+                    break;
+                case 9:
                 case 's':
                     dutyCycle = 0;
                     break;
-                case 9:
+                case 10:
                 case 'a':
                     audioBlink = 1;
                     break;
-                case 10:
+                case 11:
+                case 'v':
+                    volume = atoi(optarg);
+                    break;
+                case 12:
                 case 'd':
                     dutyCycle = atoi(optarg);
                     if (dutyCycle > 100) {
@@ -261,9 +299,9 @@ int main(int argc, char *argv[])
                         return 1;
                     }
                     break;
-                case 11:
+                case 13:
                     period = atoi(optarg);
-                    if (dutyCycle > 255) {
+                    if (period > 255) {
                         printf("Period value too high!\n");
                         return 1;
                     }
@@ -278,7 +316,7 @@ int main(int argc, char *argv[])
             }
         }
     }
-    if (ledType == 0) {
+    if (ledType == 0 && dutyCycle && !volume) {
         printUsage(argv[0]);
         return 1;
     }
@@ -286,7 +324,10 @@ int main(int argc, char *argv[])
     if (sockfd < 0) {
         return 2;
     }
-    if (!audioBlink && dutyCycle > 0) {
+    if (volume) {
+        setVolumeDependent(sockfd, volume);
+    }
+    else if (!audioBlink && dutyCycle > 0) {
         switch (ledType) {
             case 1:
                 setBlueBlink(sockfd, 2*dutyCycle, period);
@@ -308,6 +349,9 @@ int main(int argc, char *argv[])
                 break;
             case 7:
                 setPurpleRedBlink(sockfd, 2*dutyCycle, period);
+                break;
+            case 8:
+                setDisabled(sockfd);
                 break;
         }
     }

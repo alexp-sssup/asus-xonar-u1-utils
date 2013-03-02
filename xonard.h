@@ -31,6 +31,9 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <syslog.h>
+#include <signal.h>
+#include <errno.h>
 
 #include "xonar.h"
 
@@ -85,6 +88,24 @@ void processPacket(int hidfd, char *payload);
 #endif
 
 /**
+ * \brief Print message to syslog.
+ * \param[in] msg Message to print.
+ */
+void logMsg(char *msg);
+
+/**
+ * \brief Print error message with the translated errno string to syslog.
+ * \param[in] msg Message to print.
+ */
+void logErrorMsg(char *msg);
+
+/**
+ * \brief Print raw error message to syslog.
+ * \param[in] msg Message to print.
+ */
+void logErrorMsgRaw(char *msg);
+
+/**
  * \brief Change global configuration.
  * \param[in] hidfd File descriptor to the hidraw interface.
  * \param[in] conf Configuration bytes to send.
@@ -103,7 +124,15 @@ int sendGlobalConfPacket(int hidfd, uint8_t conf);
  */
 int sendBlinkConfPacket(int hidfd, uint8_t ledIndex, uint8_t dutyCycleA, uint8_t dutyCycleTotal);
 
+/**
+ * \brief Exit the program showing the error message from ioctl.
+ */
 void bailoutUinputConfig();
+
+/**
+ * \brief Hook all the key events we want to send.
+ */
+void hookKeyEvents(int uinputfd);
 
 /**
  * \brief Send a keypress to an uinput file descriptor.

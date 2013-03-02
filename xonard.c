@@ -33,20 +33,20 @@ int initIPC()
         remove(SOCK_PATH);
     sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        perror("Unable to create socket: ");
+        logErrorMsg("Unable to create socket");
         exit(1);
     }
     memset(&sock, 0, sizeof(struct sockaddr_un));
     sock.sun_family = AF_UNIX;
     snprintf(sock.sun_path, sizeof(sock.sun_path), SOCK_PATH);
     if (bind(sockfd, (struct sockaddr*)&sock, sizeof(struct sockaddr_un)) != 0) {
-        perror("Unable to bind socket: ");
+        logErrorMsg("Unable to bind socket");
         close(sockfd);
         exit(1);
     }
     chmod(SOCK_PATH, SOCK_MODE);
     if (listen(sockfd, 1) != 0) {
-        perror("Unable to listen socket");
+        logErrorMsg("Unable to listen socket");
         close(sockfd);
         exit(1);
     }
@@ -58,7 +58,7 @@ void destroyIPC(int sockfd)
     if (sockfd > 0) {
         close(sockfd);
         if (!remove(SOCK_PATH)) {
-            perror("Unable to delete FIFO: ");
+            logErrorMsg("Unable to delete FIFO");
             exit(1);
         }
     }
@@ -98,7 +98,8 @@ int waitForEvent(int sockfd, int hidfd)
     return -1;
 }
 
-int dataReady(int sockfd) {
+int dataReady(int sockfd)
+{
     fd_set fd_read;
     struct timeval timeout;
     timeout.tv_sec = 0;
@@ -118,7 +119,8 @@ int dataReady(int sockfd) {
     return 0;
 }
 
-void processPacket(int hidfd, char *payload) {
+void processPacket(int hidfd, char *payload)
+{
     if (payload == NULL)
         return;
     if (payload[0] == 0x01) {
@@ -135,6 +137,21 @@ void processPacket(int hidfd, char *payload) {
 
 #endif
 
+void logMsg(char *msg)
+{
+    syslog(LOG_INFO, msg);
+}
+
+void logErrorMsg(char *msg)
+{
+    syslog(LOG_ERR, "%s: %s", msg, strerror(errno));
+}
+
+void logErrorMsgRaw(char *msg)
+{
+    syslog(LOG_ERR, msg);
+}
+
 int sendGlobalConfPacket(int hidfd, uint8_t conf)
 {
 	uint8_t buf[17];
@@ -148,14 +165,11 @@ int sendGlobalConfPacket(int hidfd, uint8_t conf)
 	//Next byte is the requested configuration
 	buf[3] = conf;
 	int ret=write(hidfd, buf, 17);
-	if(ret<0)
-		return ret;
 	if(ret!=17)
-    {
-		fprintf(stderr, "Failure while writing global configuration packet\n");
-        return 1;
-    }
-	return 0;
+		logErrorMsgRaw("Failure while writing global configuration packet.");
+    else
+        return 0;
+    return ret;
 }
 
 int sendBlinkConfPacket(int hidfd, uint8_t ledIndex, uint8_t dutyCycleA, uint8_t dutyCycleTotal)
@@ -172,20 +186,36 @@ int sendBlinkConfPacket(int hidfd, uint8_t ledIndex, uint8_t dutyCycleA, uint8_t
 	buf[3] = dutyCycleA;
 	buf[4] = dutyCycleTotal;
 	int ret=write(hidfd, buf, 17);
-	if(ret<0)
-		return ret;
 	if(ret!=17)
-    {
-        fprintf(stderr, "Failure while writing blinking configuration packet\n");
-        return 1;
-    }
-	return 0;
+		logErrorMsgRaw("Failure while writing blinking configuration packet.");
+    else
+        return 0;
+    return ret;
 }
 
 void bailoutUinputConfig()
 {
-	perror("Error while configuring uinput device: ");
+	logErrorMsg("Error while configuring uinput device");
 	exit(2);
+}
+
+void hookKeyEvents(int uinputfd)
+{
+    int evbit[] = { EV_KEY, EV_SYN };
+    int keys[] = { KEY_MUTE, KEY_VOLUMEDOWN, KEY_VOLUMEUP };
+	int ret, i;
+    for (i=0; i < 2; ++i)
+    {
+        ret=ioctl(uinputfd, UI_SET_EVBIT, evbit[i]);
+        if (ret < 0)
+            bailoutUinputConfig();
+    }
+    for (i=0; i < 3; ++i)
+    {
+        ret=ioctl(uinputfd, UI_SET_KEYBIT, keys[i]);
+        if (ret < 0)
+            bailoutUinputConfig();
+    }
 }
 
 void sendKeyPress(int uinputfd, int keyCode)
@@ -193,29 +223,21 @@ void sendKeyPress(int uinputfd, int keyCode)
 	struct input_event ev;
 	memset(&ev, 0, sizeof(ev));
 
-	ev.type = EV_KEY;
-	ev.code = keyCode;
-	ev.value = 1;
-
-	int ret = write(uinputfd, &ev, sizeof(ev));
-	if(ret < 0)
-		fprintf(stderr, "Error while sending event");
-
-	ev.type = EV_KEY;
-	ev.code = keyCode;
-	ev.value = 0;
-
-	ret = write(uinputfd, &ev, sizeof(ev));
-	if(ret < 0)
-		fprintf(stderr, "Error while sending event");
-
+    int i;
+    for (i=1; i >= 0; --i)
+    {
+        ev.type = EV_KEY;
+        ev.code = keyCode;
+        ev.value = i;
+        if(write(uinputfd, &ev, sizeof(ev)) < 0)
+            logErrorMsgRaw("Error while sending event.");
+    }
 	ev.type = EV_SYN;
 	ev.code = 0;
 	ev.value = 0;
 
-	ret = write(uinputfd, &ev, sizeof(ev));
-	if(ret < 0)
-		fprintf(stderr, "Error while sending event");
+	if (write(uinputfd, &ev, sizeof(ev)) < 0)
+		logErrorMsgRaw("Error while sending event.");
 }
 
 void handleVolumeDown(int uinputfd)
@@ -241,14 +263,17 @@ int main(int argc, char* argv[])
 		fprintf(stderr,"Usage: %s /dev/hidrawN\n", argv[0]);
 		return 1;
 	}
+    //Syslog starts here
+    openlog("xonard", 0, LOG_LOCAL0);
+    logMsg("Starting.");
 	//Daemonize
 	pid_t pid=fork();
 	if(pid < 0)
 	{
-		perror("Error while forking: ");
+		logErrorMsg("Error while forking");
 		return 2;
 	}
-	if(pid > 0)
+	else if(pid > 0)
 	{
 		//Close the parent process
 		return 0;
@@ -258,41 +283,52 @@ int main(int argc, char* argv[])
 	pid_t sid=setsid();
 	if(sid < 0)
 	{
-		perror("Error while creating session: ");
+		logErrorMsg("Error while creating session");
 		return 2;
 	}
 
-	ret=chdir("/tmp");
-	if(ret < 0)
+	if(chdir("/tmp") < 0)
 	{
-		perror("Error while changing directory: ");
+		logErrorMsg("Error while changing directory");
 		return 2;
 	}
+
+    //Close standard fd
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
 
 	//Open the HID device
 	int hidfd = open(argv[1], O_RDWR);
 	if(hidfd < 0)
 	{
-		perror("Error opening hidraw device: ");
+		logErrorMsg("Error opening hidraw device");
 		return 2;
 	}
 
 	//Get HID device info
 	struct hidraw_devinfo devInfo;
 	ioctl(hidfd, HIDIOCGRAWINFO, &devInfo);
-	printf("VENDOR: %x, PRODUCT: %x\n", devInfo.vendor, devInfo.product);
+    char logMessage[256];
+    //Check if the peripheral is the good one
+    if (devInfo.vendor != ASUS_XONAR_VENDOR_ID) {
+        snprintf(logMessage, 256, "Wrong vendor id, expected '%x' got '%x'", ASUS_XONAR_VENDOR_ID, devInfo.vendor);
+        logErrorMsgRaw(logMessage);
+        return 2;
+    }
+    if (devInfo.product != ASUS_XONAR_PRODUCT_ID) {
+        snprintf(logMessage, 256, "Wrong product id, expected '%x' got '%x'", ASUS_XONAR_PRODUCT_ID, devInfo.product);
+        logErrorMsgRaw(logMessage);
+        return 2;
+    }
+    snprintf(logMessage, 256, "VENDOR: %x, PRODUCT: %x", devInfo.vendor, devInfo.product);
+	logMsg(logMessage);
 	char nameBuffer[256];
 	ioctl(hidfd, HIDIOCGRAWNAME(256), nameBuffer);
-	printf("NAME: %s\n", nameBuffer);
+    snprintf(logMessage, 256, "NAME: %s", nameBuffer);
+	logMsg(logMessage);
 
-	//Create UInput device
-	int uinputfd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-	if(uinputfd < 0)
-	{
-		perror("Error opening uinput device (is kernel module loaded?): ");
-		return 2;
-	}
-
+    //If enabled starts the IPC for ctl
 #if ENABLE_CTL == 1
     int sockfd = initIPC();
     if (sockfd < 0)
@@ -301,23 +337,18 @@ int main(int argc, char* argv[])
     }
 #endif
 
-	//Configure it
-	ret=ioctl(uinputfd, UI_SET_EVBIT, EV_KEY);
-	if(ret < 0)
-		bailoutUinputConfig();
-	ret=ioctl(uinputfd, UI_SET_EVBIT, EV_SYN);
-	if(ret < 0)
-		bailoutUinputConfig();
-	ret=ioctl(uinputfd, UI_SET_KEYBIT, KEY_MUTE);
-	if(ret < 0)
-		bailoutUinputConfig();
-	ret=ioctl(uinputfd, UI_SET_KEYBIT, KEY_VOLUMEDOWN);
-	if(ret < 0)
-		bailoutUinputConfig();
-	ret=ioctl(uinputfd, UI_SET_KEYBIT, KEY_VOLUMEUP);
-	if(ret < 0)
-		bailoutUinputConfig();
+	//Create UInput device
+	int uinputfd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+	if(uinputfd < 0)
+	{
+		logErrorMsg("Error opening uinput device (is kernel module loaded?)");
+		return 2;
+	}
 
+	//Configure it
+    hookKeyEvents(uinputfd);
+
+    //Create the device
 	struct uinput_user_dev uidev;
 	memset(&uidev, 0, sizeof(uidev));
 
@@ -373,7 +404,7 @@ int main(int argc, char* argv[])
 		int ret=read(hidfd, buf, 16);
 		if(ret<0)
 		{
-			perror("Failure: ");
+			logErrorMsg("Failure");
 			return 2;
 		}
 		//Handle wheel control
@@ -386,7 +417,7 @@ int main(int argc, char* argv[])
 			else if(((wheelPos-1+4)%4) == newWheelPos)
 				handleVolumeDown(uinputfd);
 			else
-				fprintf(stderr, "Invalid position variation\n");
+				logErrorMsgRaw("Invalid position variation");
 		}
 		wheelPos = newWheelPos;
 		//Handle button control

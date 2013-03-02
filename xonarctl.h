@@ -141,6 +141,19 @@ void setPurpleRedBlink(int sockfd, int timeOn, int period);
 void setPurpleAudio(int sockfd);
 
 /**
+ * \brief Disable the LED output.
+ * \param[in] sockfd A file descriptor to the socket.
+ */
+void setDisabled(int sockfd);
+
+/**
+ * \brief Change the LED output depending on the volume (from blue to red).
+ * \param[in] sockfd A file descriptor to the socket.
+ * \param[in] volume The current volume level in percent from 0 to 100.
+ */
+void setVolumeDependent(int sockfd, short volume);
+
+/**
  * \brief Initialize Inter-Process communication, create a unix socket.
  * \return A file descriptor to a socket on success or a negative number on
  * error.
