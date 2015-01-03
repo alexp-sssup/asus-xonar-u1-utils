@@ -202,8 +202,7 @@ void bailoutUinputConfig()
 void hookKeyEvents(int uinputfd)
 {
     int evbit[] = { EV_KEY, EV_SYN };
-    // originally: { KEY_MUTE, KEY_VOLUMEDOWN, KEY_VOLUMEUP }
-    int keys[] = { KEY_KATAKANAHIRAGANA, KEY_KATAKANA, KEY_HIRAGANA };
+    int keys[] = { CLOCK_WISE, COUNTER_CLOCK_WISE, PUSH };
 	int ret, i;
     for (i=0; i < 2; ++i)
     {
@@ -243,20 +242,17 @@ void sendKeyPress(int uinputfd, int keyCode)
 
 void handleVolumeDown(int uinputfd)
 {
-    // Originally: KEY_VOLUMEDOWN
-    sendKeyPress(uinputfd, KEY_KATAKANA);
+    sendKeyPress(uinputfd, COUNTER_CLOCK_WISE);
 }
 
 void handleVolumeUp(int uinputfd)
 {
-    // Originally: KEY_VOLUMEUP
-    sendKeyPress(uinputfd, KEY_HIRAGANA);
+    sendKeyPress(uinputfd, CLOCK_WISE);
 }
 
 void handleMute(int uinputfd)
 {
-    // Originally: KEY_MUTE
-	sendKeyPress(uinputfd, KEY_KATAKANAHIRAGANA);
+	sendKeyPress(uinputfd, PUSH);
 }
 
 int main(int argc, char* argv[])

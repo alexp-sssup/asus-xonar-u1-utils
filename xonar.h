@@ -31,6 +31,18 @@
 #include <unistd.h>
 #include <string.h>
 
+#ifndef CUSTOM_KEYBIND
+//Default keybinding binds the xonar controls to the media keys
+#define CLOCK_WISE KEY_VOLUMEUP
+#define COUNTER_CLOCK_WISE KEY_VOLUMEDOWN
+#define PUSH KEY_MUTE
+#else
+//Custom keybinding binds them to unused keys - here from Japanese keyboards
+#define CLOCK_WISE KEY_KATAKANA
+#define COUNTER_CLOCK_WISE KEY_HIRAGANA
+#define PUSH KEY_KATAKANAHIRAGANA
+#endif
+
 //Change it to 0 to disable xonarctl and all user-level control.
 #define ENABLE_CTL 1
 

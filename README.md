@@ -21,20 +21,30 @@ I've also reverse engineered how to configure the blinking of both the blue and 
     `sudo make install`
 - Start the daemon:  
     `sudo xonard /dev/hidraw0`  
-    (note it could be another number, check with `ls /dev/hidraw*`)
-- Bind the keys:
-    - Open your shortcuts (Ubuntu: System Settings -> Keyboard -> Shortcuts)
-    - Add the following shortcuts (Ubuntu: click on the `+` button on bottom) 
-        (note: it can be another card number, open `alsamixer` and press `F6` to find out)
-        - Title: `Asus U1 volume up`  
-            Command: `amixer -q -c 1 set PCM 2%+`  
-            Shortcut: rotate the volume knob in the desired direction
-        - Title: `Asus U1 volume down`  
-            Command: `amixer -q -c 1 set PCM 2%-`  
-            Shortcut: rotate the volume knob in the desired direction
-        - Title: `Asus U1 toggle play/pause`  
-            Command: `xdotool key XF86AudioPlay`  
-            Shortcut: press the volume knob
+
+## Custom keybinding
+Compiling with `make custom` will make the xonar use custom keybinding, returning keystrokes not available on a standard US keyboard. Such keystrokes can be customized for advanced control.
+- Follow installation instructions, substituting `make custom` for your `make` call
+- Bind the keys
+
+In Ubuntu you can add shortcuts from `System Settings -> Keyboard -> Shortcuts`, click on the `+` button on the bottom.  
+Here are some example bindings:
+- Title: `Asus U1 volume up`  
+    Command: `amixer -q -c 1 set PCM 2%+`  
+    Shortcut: rotate the volume knob in the desired direction
+- Title: `Asus U1 volume down`  
+    Command: `amixer -q -c 1 set PCM 2%-`  
+    Shortcut: rotate the volume knob in the desired direction
+- Title: `Asus U1 toggle play/pause`  
+    Command: `xdotool key XF86AudioPlay`  
+    Shortcut: press the volume knob
+
+## Notes
+- The device number can differ, check with `ls /dev/hidraw*`.
+- The card number can differ, open `alsamixer` and press `F6` to find out.
+- To once shortcuts are set at OS level, you can switch between setups with the following:
+    - `make; sudo make install; sudo xonard /dev/hidraw0`
+    - `make custom; sudo make install; sudo xonard /dev/hidraw0`
 
 ## Dirty sound fix
 
