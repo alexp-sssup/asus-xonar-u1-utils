@@ -46,7 +46,7 @@ When plugging the card on many Linux distros (particularly Ubuntu) and listening
 
 ## Enjoy your hardware
 
-The Asus Xonar U1 is a great piece of hardware, which plays much better than you can imagine unless you have the proper setup. Try activating the optical output, getting a toslink optical cable (they're super cheap) and connect it to a good hi-fi (not so cheap) for maximum fidelity. Or just get some good headphones (cheaper than you think). Then get some high-quality music: if `MP3` you'll notice the difference between a low-quality and high-quality encoding (say between 128kBps and 320kBps). Or get a CD/DVD, or `flac` files, and search online for the keyword `audiophile`. Enjoy your hardware.
+The Asus Xonar U1 is a great piece of hardware, which plays much better than you can imagine unless you have the proper setup. Try activating the optical output, getting a toslink optical cable (they're super cheap) and connect it to a good hi-fi (not so cheap) for maximum fidelity. Or just get some good headphones (cheaper than you think). Then get some high-quality music: if `MP3` you'll notice the difference between a low-quality and high-quality encoding (say between 128kbps and 320kbps). Or get a CD/DVD, or `flac` files, and search online for the keyword `audiophile`. Enjoy your hardware.
 
 Also, spend some time playing around with `alsamixer`. If your headphones can sustain higher volume, unmute the `Loudness` control: it activates the internal amplifier, use it with caution, it delivers high volume without quality loss.
 
