@@ -6,7 +6,7 @@ xonard: xonard.c
 xonarctl: xonarctl.c
 	gcc -Wall -o $@ $^
 
-install: xonard xonarctl
+install: xonard xonarctl uninstall
 	cp -a 16-asus-xonar-u1.rules /etc/udev/rules.d/
 	cp -a 16-asus-xonar-u1.sh /etc/pm/sleep.d/
 	cp -a xonard /usr/local/bin/
