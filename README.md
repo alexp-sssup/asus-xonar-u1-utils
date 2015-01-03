@@ -24,8 +24,7 @@ I've also reverse engineered how to configure the blinking of both the blue and 
     (note it could be another number, check with `ls /dev/hidraw*`)
 - Bind the keys:
     - Open your shortcuts (Ubuntu: System Settings -> Keyboard -> Shortcuts)
-    - Add a shortcut (Ubuntu: click on the `+` button on bottom)
-    - Add commands:  
+    - Add the following shortcuts (Ubuntu: click on the `+` button on bottom) 
         (note: it can be another card number, open `alsamixer` and press `F6` to find out)
         - Title: `Asus U1 volume up`  
             Command: `amixer -q -c 1 set PCM 2%+`  
@@ -33,7 +32,9 @@ I've also reverse engineered how to configure the blinking of both the blue and 
         - Title: `Asus U1 volume down`  
             Command: `amixer -q -c 1 set PCM 2%-`  
             Shortcut: rotate the volume knob in the desired direction
-        - By default, pressing the knob is recognized as system-wide `mute`
+        - Title: `Asus U1 toggle play/pause`  
+            Command: `xdotool key XF86AudioPlay`  
+            Shortcut: press the volume knob
 
 ## Dirty sound fix
 
