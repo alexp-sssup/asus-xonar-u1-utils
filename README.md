@@ -2,7 +2,8 @@
 
 Xonard: a simple daemon to handle the non standard audio controls on Asus Xonar U1 devices
 Copyright 2012-2015 Alessandro Pignotti
-Edited 2014 Giuseppe Cuccu
+
+Edited 2015 Giuseppe Cuccu
 
 ## Description
 
@@ -23,6 +24,7 @@ I've also reverse engineered how to configure the blinking of both the blue and 
     `sudo xonard /dev/hidraw0`  
 
 ## Custom keybinding
+
 Compiling with `make custom` will make the xonar use custom keybinding, returning keystrokes not available on a standard US keyboard. Such keystrokes can be customized for advanced control.
 - Follow installation instructions, substituting `make custom` for your `make` call
 - Bind the keys
