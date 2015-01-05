@@ -1,2 +1,3 @@
 Create some cleaning function (exit)
 Make it compliant with udev-systemd.
+Accept custom keymap from config file (and revert to default media keys if none found)
