@@ -57,6 +57,8 @@ When plugging the card on many Linux distros (particularly Ubuntu) and listening
 - Press `m` to toggle it mute (will switch from `00` to `MM`)
 - The red light should be off now. Plug in the headphones and verify if the problem is solved.
 
+To make sure the problem does not represent itself every time you disconnect/reconnect the xonar, save the alsamixer settings with `sudo alsactl store 1`. If you still have problems you can check [here](http://ubuntuforums.org/showthread.php?t=1652691) for further assistance.
+
 ## Enjoy your hardware
 
 The Asus Xonar U1 is a great piece of hardware, which plays much better than you can imagine unless you have the proper setup. Try activating the optical output, getting a toslink optical cable (they're super cheap) and connect it to a good hi-fi (not so cheap) for maximum fidelity. Or just get some good headphones (cheaper than you think). Then get some high-quality music: if `MP3` you'll notice the difference between a low-quality and high-quality encoding (say between 128kbps and 320kbps). Or get a CD/DVD, or `flac` files, and search online for the keyword `audiophile`. Enjoy your hardware.
